@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cartilla Sistemas de Gestión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+body{margin:0}
+/* Layout: sala de lectura oscura; el libro centrado ocupa todo el alto disponible, barra de control abajo. Look único oscuro a propósito. */
+:root{
+  --room:#17181b; --room-2:#212327; --line:#33363c;
+  --ink:#f2f0ee; --muted:#a3a6ad;
+  --red:#e3001b; --red-soft:#ff4a5c;
+  --display:"Poppins",system-ui,sans-serif;
+  --body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--room);color:var(--ink);font-family:var(--body);overflow:hidden;
+  background-image:radial-gradient(ellipse at 50% 40%,#2a2c31 0%,var(--room) 70%)}
+.app{height:100%;display:flex;flex-direction:row;
+  padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 4px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand .mark{width:10px;height:28px;background:var(--red);border-radius:2px;flex:none}
+.brand h1{font-family:var(--display);font-weight:600;font-size:1.05rem;margin:0;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand small{display:block;font-family:var(--body);font-weight:600;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hint{font-size:.8rem;color:var(--muted);white-space:nowrap}
+@media (max-width:640px){.hint{display:none}}
+
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+#sizer{margin:0 auto;max-width:100%}
+.page{background:#fff;overflow:hidden}
+.page img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;background:#f3f3f3}
+.page.--left{box-shadow:inset -12px 0 18px -10px rgba(0,0,0,.25)}
+.page.--right{box-shadow:inset 12px 0 18px -10px rgba(0,0,0,.25)}
+.side{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:72px;border:0;border-radius:8px;
+  background:rgba(255,255,255,.06);color:var(--ink);cursor:pointer;display:grid;place-items:center;transition:background .2s}
+.side:hover{background:var(--red)}
+.side.prev{left:8px}.side.next{right:8px}
+.side{background:rgba(23,24,27,.55)}
+@media (max-width:700px){.side{display:none}}
+
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:.9rem}
+
+nav.bar{order:-1;flex:none;width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding-block:max(10px,env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-bottom,0px));
+  background:var(--room-2);border-right:1px solid var(--line);overflow-y:auto}
+nav.bar .sep{width:28px;height:1px;background:var(--line);margin:4px 0;flex:none}
+@media (max-width:700px) and (orientation:portrait){
+  .app{flex-direction:column}
+  nav.bar{order:1;width:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;border-right:0;border-top:1px solid var(--line);justify-content:center;padding-inline:8px}
+  nav.bar .sep{width:1px;height:28px;margin:0 2px}
+  .counter{flex-direction:row!important}
+  nav.bar .btn{width:38px;min-width:38px;height:38px}
+  #first,#last{display:none}
+}
+.btn{height:40px;width:40px;min-width:40px;padding:0;flex:none;border:1px solid var(--line);background:var(--room-2);color:var(--ink);
+  border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;font:600 .85rem var(--body)}
+.btn:hover{border-color:var(--red-soft)}
+.btn:focus-visible,.side:focus-visible,.thumb:focus-visible,#pageInput:focus-visible{outline:2px solid var(--red-soft);outline-offset:2px}
+.btn svg{width:18px;height:18px}
+.btn .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.counter{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;font:600 .9rem var(--body);font-variant-numeric:tabular-nums;color:var(--muted);padding:0 6px}
+#pageInput{width:46px;height:34px;padding:0;font-size:.8rem!important;text-align:center;background:var(--room);color:var(--ink);border:1px solid var(--line);border-radius:6px;font:700 .95rem var(--body);font-variant-numeric:tabular-nums}
+.progress{display:none;height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:2px}
+.progress i{display:block;height:100%;width:0;background:var(--red);transition:width .4s}
+
+/* Índice de páginas */
+.drawer{position:fixed;inset:0;background:rgba(10,10,12,.82);backdrop-filter:blur(4px);z-index:20;display:flex;flex-direction:column;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.drawer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.drawer-head h2{font-family:var(--display);font-size:1.1rem;margin:0}
+.grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:14px;align-content:start;padding:4px}
+.thumb{border:0;padding:0;background:none;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;gap:6px;font:600 .8rem var(--body);font-variant-numeric:tabular-nums}
+.thumb img{width:100%;aspect-ratio:1100/1423;object-fit:cover;border-radius:4px;border:2px solid transparent;background:#2b2d31}
+.thumb:hover img{border-color:var(--line)}
+.thumb.on img{border-color:var(--red)}
+.thumb.on{color:var(--ink)}
+
+/* Lectura ampliada */
+.zoom{position:fixed;inset:0;background:var(--room);z-index:30;overflow:auto;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px))}
+.zoom .close{position:sticky;top:0;float:right;z-index:2}
+.zoom .imgs{display:flex;flex-direction:column;align-items:center;gap:16px;clear:both;padding-top:8px}
+.zoom img{width:min(100%,1100px);height:auto;border-radius:2px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+
+@media (prefers-reduced-motion:reduce){.progress i{transition:none}}
+</style>
+
+</head><body>
+<div class="app">
+  <div class="stage" id="stage">
+    <div id="sizer"><div id="book"></div></div>
+    <div class="loading" id="loading">Abriendo la cartilla…</div>
+  </div>
+
+  <nav class="bar" aria-label="Controles de la cartilla">
+    <button class="btn" id="first" aria-label="Portada" title="Portada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+    <button class="btn" id="prev" aria-label="Anterior" title="Anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="counter">
+      <div>
+        <label for="pageInput" class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Ir a página</label>
+        <input id="pageInput" inputmode="numeric" value="1" aria-label="Ir a página"> <span id="total" style="font-size:.75rem">/ 52</span>
+        <div class="progress"><i id="prog"></i></div>
+      </div>
+    </div>
+    <button class="btn" id="next" aria-label="Siguiente" title="Siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+    <button class="btn" id="last" aria-label="Contraportada" title="Contraportada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="btn" id="openGrid" title="Ver todas las páginas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="lbl">Páginas</span></button>
+    <button class="btn" id="openZoom" title="Leer en grande"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg><span class="lbl">Ampliar</span></button>
+    <button class="btn" id="fs" title="Pantalla completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="lbl">Pantalla completa</span></button>
+  </nav>
+</div>
+
+<div class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-label="Todas las páginas">
+  <div class="drawer-head"><h2>Todas las páginas</h2><button class="btn" id="closeGrid">Cerrar</button></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="Lectura ampliada">
+  <button class="btn close" id="closeZoom">Volver a la cartilla</button>
+  <div class="imgs" id="zoomImgs"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+<script>
+(function(){
+  const TOTAL = 52, W = 1100, H = 1423;
+  const book = document.getElementById('book');
+  const stage = document.getElementById('stage');
+  const sizer = document.getElementById('sizer');
+  const $ = id => document.getElementById(id);
+  $('total').textContent = '/ ' + TOTAL;
+
+  // Construir páginas
+  const imgs = [];
+  for (let i = 1; i <= TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'page';
+    if (i === 1 || i === TOTAL) d.dataset.density = 'hard';
+    const im = document.createElement('img');
+    im.alt = 'Página ' + i; im.decoding = 'async';
+    im.dataset.src = 'pages/' + i + '.webp';
+    d.appendChild(im); book.appendChild(d); imgs.push(im);
+  }
+  function load(i){ const im = imgs[i]; if (im && !im.src) im.src = im.dataset.src; }
+
+  // Ajustar el tamaño del libro al espacio disponible
+  function fit(){
+    const r = stage.getBoundingClientRect();
+    const availW = r.width, availH = r.height;
+    const twoUp = availW >= 560;
+    const perPage = Math.min(twoUp ? availW / 2 : availW, availH * W / H);
+    sizer.style.width = Math.floor(perPage * (twoUp ? 2 : 1)) + 'px';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  const startHash = /^#pagina-(\d+)$/.exec(location.hash);
+  let start = startHash ? Math.min(TOTAL, Math.max(1, +startHash[1])) - 1 : 0;
+  for (let i = Math.max(0,start-3); i < Math.min(TOTAL,start+5); i++) load(i);
+
+  const pf = new St.PageFlip(book, {
+    width: W / 2, height: H / 2, size: 'stretch',
+    minWidth: 240, maxWidth: 1100, minHeight: 310, maxHeight: 1423,
+    showCover: true, usePortrait: true, maxShadowOpacity: 0.45,
+    mobileScrollSupport: false, flippingTime: 800, startPage: start,
+    autoSize: true, drawShadow: true, swipeDistance: 30
+  });
+  pf.loadFromHTML(book.querySelectorAll('.page'));
+  $('loading').remove();
+
+  // Cargar el resto en segundo plano, de cerca a lejos
+  let q = 0;
+  (function bg(){ if (q >= TOTAL) return; load(q++); setTimeout(bg, 120); })();
+
+  function update(){
+    const idx = pf.getCurrentPageIndex();
+    for (let i = idx - 2; i <= idx + 4; i++) load(i);
+    const pages = visible();
+    $('pageInput').value = pages.length > 1 ? pages[0] + '–' + pages[1] : pages[0];
+    $('prog').style.width = (Math.max(...pages) / TOTAL * 100) + '%';
+    try { history.replaceState(null, '', '#pagina-' + (idx + 1)); } catch(e){}
+    document.querySelectorAll('.thumb').forEach(t => t.classList.toggle('on', pages.includes(+t.dataset.p)));
+  }
+  function visible(){
+    const idx = pf.getCurrentPageIndex() + 1;
+    if (pf.getOrientation() === 'portrait' || idx === 1 || idx === TOTAL) return [idx];
+    const a = idx % 2 === 0 ? idx : idx - 1;
+    return a + 1 <= TOTAL ? [a, a + 1] : [a];
+  }
+  pf.on('flip', update);
+  pf.on('changeOrientation', update);
+  pf.on('init', update);
+  setTimeout(update, 50);
+
+  const go = n => { n = Math.min(TOTAL, Math.max(1, n)); pf.flip(n - 1); };
+  $('prev').onclick = () => pf.flipPrev();
+  $('next').onclick = () => pf.flipNext();
+  $('first').onclick = () => pf.flip(0);
+  $('last').onclick = () => pf.flip(TOTAL - 1);
+  $('pageInput').addEventListener('focus', e => e.target.select());
+  $('pageInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const n = parseInt(e.target.value, 10); if (n) go(n); e.target.blur(); }
+  });
+  $('pageInput').addEventListener('blur', update);
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (!$('zoom').hidden || !$('drawer').hidden) { if (e.key === 'Escape') { $('zoom').hidden = true; $('drawer').hidden = true; } return; }
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') pf.flipNext();
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') pf.flipPrev();
+    else if (e.key === 'Home') pf.flip(0);
+    else if (e.key === 'End') pf.flip(TOTAL - 1);
+  });
+
+  // Índice de miniaturas
+  const grid = $('grid');
+  for (let i = 1; i <= TOTAL; i++) {
+    const b = document.createElement('button');
+    b.className = 'thumb'; b.dataset.p = i;
+    b.innerHTML = '<img loading="lazy" alt="" src="thumbs/' + i + '.webp"><span>Página ' + i + '</span>';
+    b.onclick = () => { $('drawer').hidden = true; pf.turnToPage(i - 1); update(); };
+    grid.appendChild(b);
+  }
+  $('openGrid').onclick = () => { $('drawer').hidden = false; update(); const on = grid.querySelector('.on'); if (on) on.scrollIntoView({block:'center'}); $('closeGrid').focus(); };
+  $('closeGrid').onclick = () => $('drawer').hidden = true;
+
+  // Lectura ampliada de la(s) página(s) visibles
+  $('openZoom').onclick = () => {
+    const box = $('zoomImgs'); box.innerHTML = '';
+    visible().forEach(p => { const im = new Image(); im.src = 'pages/' + p + '.webp'; im.alt = 'Página ' + p; box.appendChild(im); });
+    $('zoom').hidden = false; $('zoom').scrollTop = 0; $('closeZoom').focus();
+  };
+  $('closeZoom').onclick = () => $('zoom').hidden = true;
+
+  // Pantalla completa (opcional según el navegador)
+  $('fs').onclick = () => {
+    const el = document.documentElement;
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+    } catch(e){}
+  };
+  if (!document.fullscreenEnabled) $('fs').hidden = true;
+
+
+})();
+</script>
+
+</body></html>
